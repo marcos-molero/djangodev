@@ -1,0 +1,6 @@
+citas
+core
+historia
+imed_v1
+medicos
+pacientes

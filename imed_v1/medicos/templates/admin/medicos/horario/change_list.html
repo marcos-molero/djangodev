@@ -1,0 +1,32 @@
+{% extends "admin/change_list.html" %}
+{% load i18n %}
+
+{% block content %}
+  {{ block.super }}
+  <h1>Horarios agrupados por día</h1>
+  {% for dia, horarios in horarios_por_dia.items %}
+    <h2>{{ dia }}</h2>
+    <table class="admin-table">
+      <thead>
+        <tr>
+          <th>Médico</th>
+          <th>Descripción</th>
+          <th>Hora Inicio</th>
+          <th>Hora Fin</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for horario in horarios %}
+          <tr>
+            <td>{{ horario.medico.usuario.get_full_name }}</td>
+            <td>{{ horario.descripcion }}</td>
+            <td>{{ horario.hora_inicio }}</td>
+            <td>{{ horario.hora_fin }}</td>
+          </tr>
+        {% empty %}
+          <tr><td colspan="4">No hay horarios para este día.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% endfor %}
+{% endblock %}

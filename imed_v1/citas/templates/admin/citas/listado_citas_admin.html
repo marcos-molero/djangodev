@@ -1,0 +1,33 @@
+{% extends "admin/base_site.html" %}
+{% load i18n %}
+
+{% block content %}
+<h1>🗓️ Listado de Citas del Día - {{ fecha }}</h1>
+<button onclick="window.print()" class="default">🖨️ Imprimir</button>
+
+{% for medico, citas in citas_por_medico.items %}
+  <h2>{{ medico.usuario.get_full_name }}</h2>
+  {% if citas %}
+    <table class="admin-table">
+      <thead>
+        <tr>
+          <th>Hora</th>
+          <th>Paciente</th>
+          <th>Motivo</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for cita in citas %}
+          <tr>
+            <td>{{ cita.hora }}</td>
+            <td>{{ cita.paciente.usuario.get_full_name }}</td>
+            <td>{{ cita.motivo|default:"—" }}</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% else %}
+    <p>No hay citas para este médico hoy.</p>
+  {% endif %}
+{% endfor %}
+{% endblock %}
