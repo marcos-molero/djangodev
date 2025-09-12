@@ -6,36 +6,36 @@ from django.conf import settings
 """
 Tuplas de selección simple
 """
-OPCIONES_SI_NO = {
-    'S': 'Si',
-    'N': 'No',
-}
-OPCIONES_CANAL_SELECCIONADO = {
-    '  ': 'No validar',
-    'RR': 'Operaciones financieras',
-    '00': 'Canales',
-}
-OPCIONES_ELEMENTO_SELECCIONADO = {
-    ' ': 'No validar',
-    'E': 'Modo entrada libre',
-    'L': 'Listar',
-}
-OPCIONES_LAPSO_TIEMPO = {
-    'S': 'Segundos',
-    'M': 'Minutos',
-    'H': 'Horas',
-}
-OPCIONES_TIPO_PERSONA = {
-    ' ': 'No validar',
-    'N': 'Natural',
-    'J': 'Juridico',
-    'G': 'Gobierno',
-}
-OPCIONES_FERIADO = {
-    'F': 'Feriado',
-    'H': 'Habil',
-    'A': 'Ambos',
-}
+OPCIONES_SI_NO = [
+    ('S', 'Si'),
+    ('N', 'No')
+]
+OPCIONES_CANAL_SELECCIONADO = [
+    ('  ', 'No validar'),
+    ('RR', 'Operaciones financieras'),
+    ('00', 'Canales'),
+]
+OPCIONES_ELEMENTO_SELECCIONADO = [
+    (' ', 'No validar'),
+    ('E', 'Modo entrada libre'),
+    ('L', 'Listar'),
+]
+OPCIONES_LAPSO_TIEMPO = [
+    ('S', 'Segundos'),
+    ('M', 'Minutos'),
+    ('H', 'Horas'),
+]
+OPCIONES_TIPO_PERSONA = [
+    (' ', 'No validar'),
+    ('N', 'Natural'),
+    ('J', 'Juridico'),
+    ('G', 'Gobierno'),
+]
+OPCIONES_FERIADO = [
+    ('F', 'Feriado'),
+    ('H', 'Habil'),
+    ('A', 'Ambos'),
+]
 
 
 class TokenConVencimiento(models.Model):
@@ -44,11 +44,10 @@ class TokenConVencimiento(models.Model):
   """
   key = models.CharField(max_length=40, primary_key=True)
   user = models.OneToOneField(User, related_name='token_con_vencimiento', on_delete=models.CASCADE)
-  created_at = models.DateField(auto_now_add=True)
+  created_at = models.DateTimeField(auto_now_add=True)
 
   def is_expired(self):
-    lc_timeout = getattr(settings, 'TOKEN_VENCE_SEG', 3600)
-
+    lc_timeout = getattr(settings, 'TOKEN_TIMEOUT_SECONDS', 3600)
     return (timezone.now() - self.created_at).total_seconds() > lc_timeout
   
   def __str__(self):
@@ -60,7 +59,7 @@ class Ilr001(models.Model):
     Tablas generales del sistema
     FK:
     """
-    pk = models.CompositePrimaryKey('r001001', 'r001002')
+    #pk = models.CompositePrimaryKey('r001001', 'r001002')
     r001001 = models.SmallIntegerField(verbose_name='Tabla')
     r001002 = models.CharField(max_length=15, verbose_name='Item')
     r001003 = models.CharField(max_length=150, verbose_name='Descripción')
@@ -76,6 +75,7 @@ class Ilr001(models.Model):
         db_table_comment = 'iLook - Tablas Generales'
         verbose_name = 'Tabla'
         verbose_name_plural = 'Tablas'
+        unique_together = ['r001001', 'r001002']
 
 
 class Ilr002(models.Model):
