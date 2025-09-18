@@ -5,7 +5,8 @@ from rest_framework.views import APIView
 from rest_framework import status
 from datetime import timedelta
 from .models import SessionToken
-from utils import respuesta_json
+from utils.respuesta_json import respuesta_json
+import logging
 
 class LoginView(APIView):
 
@@ -19,10 +20,17 @@ class LoginView(APIView):
     )
 
     if lc_user:
+      # Eliminamos los tokens anteriores, por si acaso.
+      SessionToken.objects.filter(user=lc_user).delete()
+      # Nuevo token.
       lc_token = SessionToken.objects.create(
         user = lc_user,
         expires_at = timezone.now() + timedelta(seconds=settings.TOKEN_EXPIRATION_TIME_IN_SECONDS)
       )
+      # Registrar en logger.
+      logger = logging.getLogger(__name__)
+      logger.info(f"Usuario {lc_user.username} inició sesión.")
+      # Respuesta
       return respuesta_json(
         detalle='Inicio de sesión exitoso.',
         codigo=status.HTTP_200_OK,
@@ -39,10 +47,14 @@ class LogoutView(APIView):
 
   def post(self, request):
 
-    token_str = request.data.get('token')
+    auth_token = request.headers.get('Authorization')
+    if not auth_token or not auth_token.startswith('Bearer '):
+      return respuesta_json(detalle='Encabezado Authorization inválido.', codigo=401)
+    # Extraer solo el UUID del token
+    auth_token = auth_token.split(' ')[1].strip()
 
     try:
-      token = SessionToken.objects.get(token=token_str)
+      token = SessionToken.objects.get(token=auth_token)
       token.delete()
       return respuesta_json(
         detalle='Sesion cerrada.',

@@ -16,4 +16,4 @@ def respuesta_json(detalle: str, codigo: int, datos: dict = None):
         "detalle": detalle,
         "codigo": codigo,
         "datos": datos or {}
-    })
+    }, status=codigo)
