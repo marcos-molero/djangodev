@@ -1,13 +1,56 @@
 from rest_framework import serializers
 from core.models import *
+from core.services.leer_Ilr001 import get_ilr001_descripcion
+
+class Ilr001ListSerializer(serializers.ModelSerializer):
+  """
+  Tablas generales.
+  """
+  estatus_display = serializers.SerializerMethodField()
+
+  class Meta:
+    model = Ilr001
+    fields = (
+      'r001001',
+      'r001003',
+      'r001004',
+      'estatus_display',
+    )
+
+  def get_estatus_display(self, obj):
+    return obj.get_r001004_display().strip() if obj.r001004 else ''
 
 class Ilr001Serializer(serializers.ModelSerializer):
   """
   Tablas generales.
   """
+  estatus_display = serializers.SerializerMethodField()
+
   class Meta:
     model = Ilr001
-    exclude = ['pk', 'r001007', 'r001008']
+    fields = (
+      'r001001',
+      'r001002',
+      'r001003',
+      'r001004',
+      'estatus_display',
+      'r001005',
+      'r001006',
+    )
+    read_only_fields = ('r001007', 'r001008')
+
+  def validate_r001003(self, value):
+    if value.strip() == '':
+      raise serializers.ValidationError("El valor de descripcion no puede ser blancos.")
+    return value.strip()
+
+  def validate_r001001(self, value):
+    if value == 0:
+      raise serializers.ValidationError("El valor de tabla_id no puede ser cero.")
+    return value
+  
+  def get_estatus_display(self, obj):
+    return obj.get_r001004_display().strip() if obj.r001004 else ''
 
 
 class Ilr002Serializer(serializers.ModelSerializer):
@@ -18,8 +61,7 @@ class Ilr002Serializer(serializers.ModelSerializer):
 
   class Meta:
     model = Ilr002
-    #fields = ['r002001', 'r002002', 'r002003', 'r002004', 'r002005', 'estatus_descripcion']
-    fields = '__all__'
+    fields = ['r002001', 'r002002', 'r002003', 'r002004', 'r002005', 'estatus_descripcion']
 
   def validate(self, data):
     lc_inicio = data.get('r002003')
@@ -102,7 +144,10 @@ class Ilm003Serializer(serializers.ModelSerializer):
 
 class Ilm004Serializer(serializers.ModelSerializer):
   """
-  Paises
+  Serializer para el modelo Ilm004 (Alertas). 
+  Incluye validaciones contra Ilr001 y descripciones extendidas.
+  
+  FK: Tablas(Ilr001)
   """
   estatus_descripcion = serializers.SerializerMethodField()
   gravedad_descripcion = serializers.SerializerMethodField()
@@ -111,55 +156,54 @@ class Ilm004Serializer(serializers.ModelSerializer):
 
   class Meta:
     model = Ilm004
-    fields = '__all__'
+    fields = [
+      'm004001', 
+      'm004002', 
+      'm004003', 'gravedad_descripcion',
+      'm004004', 'accion_descripcion',
+      'm004005', 'estatus_descripcion',
+      'm004006', 'clase_descripcion',
+      ]
+    read_only_fields = ['m004007', 'm004008']
 
+  # Gravedad
   def validate_m004003(self, value):
+    value = value.strip().upper()
     if not Ilr001.objects.filter(r001001=6, r001002=value).exists():
         raise serializers.ValidationError('Gravedad invalido.')
     return value
 
+  # Accion
   def validate_m004004(self, value):
+    value = value.strip().upper()
     if not Ilr001.objects.filter(r001001=7, r001002=value).exists():
         raise serializers.ValidationError('Acción invalido.')
     return value
-  
-  def validate_m004005(self, value):
-    if not Ilr001.objects.filter(r001001=8, r001002=value).exists():
-        raise serializers.ValidationError('Estatus invalido.')
-    return value
 
+  # Clase
   def validate_m004006(self, value):
+    value = value.strip().upper()
     if not Ilr001.objects.filter(r001001=19, r001002=value).exists():
         raise serializers.ValidationError('Clase invalido.')
     return value
 
   def get_gravedad_descripcion(self, obj):
-    try:
-      lc_tabla = Ilr001.objects.filter(r001001=6, r001002=obj.m004003).first()
-      return lc_tabla.r001003 if lc_tabla else None
-    except Exception:
-      return None
+    return obj.get_gravedad_display()
 
   def get_accion_descripcion(self, obj):
-    try:
-      lc_tabla = Ilr001.objects.filter(r001001=7, r001002=obj.m004004).first()
-      return lc_tabla.r001003 if lc_tabla else None
-    except Exception:
-      return None
+    return obj.get_accion_display()
 
   def get_estatus_descripcion(self, obj):
-    try:
-      lc_estatus = Ilr001.objects.filter(r001001=8, r001002=obj.m004005).first()
-      return lc_estatus.r001003 if lc_estatus else None
-    except Exception:
-      return None
+    return obj.get_estatus_catalogo_display()
 
   def get_clase_descripcion(self, obj):
-    try:
-      lc_tabla = Ilr001.objects.filter(r001001=19, r001002=obj.m004006).first()
-      return lc_tabla.r001003 if lc_tabla else None
-    except Exception:
-      return None
+    return obj.get_clase_display()
+
+  # Limpiar campos CHAR.
+  def to_representation(self, instance):
+    data = super().to_representation(instance)
+    data['m004002'] = data['m004002'].strip() if data.get('m004002') else None
+    return data
 
 
 class Ilm006Serializer(serializers.ModelSerializer):
@@ -293,3 +337,57 @@ class Ilm006Serializer(serializers.ModelSerializer):
       return lc_tabla.r001003 if lc_tabla else None
     except Exception:
       return None
+
+
+class Ilm027Serializer(serializers.ModelSerializer):
+  """
+  Transacciones con sensibilidad de riesgo
+  FK:
+  """
+  class Meta:
+    model = Ilm027
+    exclude = ['pk']
+
+
+class Ilh003Serializer(serializers.ModelSerializer):
+  """
+  Historico de alertas
+  FK: Ilr001, Ilm004
+  """
+  class Meta:
+    model = Ilh003
+    fields = '__all__'
+
+
+class Ilm016Serializer(serializers.ModelSerializer):
+  """
+  Paises para validación de Reglas 
+
+  """
+  pais_display = serializers.SerializerMethodField()
+
+  class Meta:
+    model = Ilm016
+    fields = (
+      'm016001',
+      'm016003',
+      'pais_display',
+      'm016004',
+    )
+    read_only_fields = ['m016005', 'm016006',]
+
+  def get_pais_display(self, obj):
+    return get_ilr001_descripcion(3, obj.m016003).strip() if obj.m016003 else ''
+  
+  def validate_m016003(self, value):
+    if not get_ilr001_descripcion(3, value):
+      raise serializers.ValidationError("Codigo de pais no valido según catalogo ILR001.")
+    return value
+
+  def validate(self, data):
+    regla = data.get('m016001')
+    codigo_pais = data.get('m016003')
+
+    if Ilm016.objects.filter(m016001 = regla, m016003 = codigo_pais).exists():
+      raise serializers.ValidationError("El país ya está registrado para la regla.")
+    return data

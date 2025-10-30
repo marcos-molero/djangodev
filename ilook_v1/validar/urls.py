@@ -14,16 +14,19 @@ Including another URLconf
     1. Import the include() function: from django.urls import include, path
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
-from django.contrib import admin
-from django.urls import include, path
+from django.urls import path
+from .views import (
+  CargarTransaccionesISOView, 
+  EjecutarValidacionesISOView, 
+  CargarTransaccionesLK1View,
+  EjecutarValidacionesLK1View,
+  LoteLK1ResumenView,
+)
 
 urlpatterns = [
-    path('admin/', admin.site.urls),
-    path('api/v1/auth/', include('sesion.urls')),
-    path('api/v1/ws/', include('ws.urls')),
-    path('api/v1/validar/', include('validar.urls')),
-] 
-handler400 = 'ws.views.custom_400_view'
-handler403 = 'ws.views.custom_403_view'
-handler404 = 'ws.views.custom_404_view'
-handler500 = 'ws.views.custom_500_view'
+    path('iso/cargar/', CargarTransaccionesISOView.as_view(), name='iso-cargar'),
+    path('iso/ejecutar/', EjecutarValidacionesISOView.as_view(), name='iso-ejecutar'),
+    path('lk1/cargar/', CargarTransaccionesLK1View.as_view(), name='lk1-cargar'),
+    path('lk1/ejecutar/', EjecutarValidacionesLK1View.as_view(), name='lk1-ejecutar'),
+    path('lk1/lotes/', LoteLK1ResumenView.as_view(), name='lk1-lotes'),
+]

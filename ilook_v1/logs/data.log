@@ -1,0 +1,5 @@
+ERROR 2025-10-17 20:52:26,542 logging [Reglas.Paises] [list] No autorizado a la accion. Usuario: mmolero IP: 127.0.0.1 UA: PostmanRuntime/7.48.0
+INFO 2025-10-17 20:55:00,020 logging [Reglas.Paises] [list] Acceso autorizado Usuario: mmolero IP: 127.0.0.1 UA: PostmanRuntime/7.48.0
+INFO 2025-10-17 20:55:00,020 logging [Reglas.Paises] [list] Acceso autorizado Usuario: mmolero IP: 127.0.0.1 UA: PostmanRuntime/7.48.0
+INFO 2025-10-17 21:02:26,164 logging [Reglas.Paises] [list] Acceso autorizado Usuario: mmolero IP: 127.0.0.1 UA: PostmanRuntime/7.48.0
+INFO 2025-10-17 21:02:26,165 logging [Reglas.Paises] [list] Acceso autorizado Usuario: mmolero IP: 127.0.0.1 UA: PostmanRuntime/7.48.0

@@ -10,28 +10,36 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/5.2/ref/settings/
 """
 
-import environ
+import os, environ
 from pathlib import Path
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 
-# Environ usage
-env = environ.Env()
-environ.Env.read_env(BASE_DIR / '.env')
-
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
+
+
+# Environ Init and load
+env = environ.Env()
+environ.Env.read_env(os.path.join(BASE_DIR, '.env'))
+
 
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = env('SECRET_KEY')
 
+
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = env.bool('DEBUG', default=False)
+DEBUG = env('DEBUG')
 
-ALLOWED_HOSTS = ['django.local']
+ALLOWED_HOSTS = env.list('ALLOWED_HOSTS', default=['localhost'])
 
+
+# HTTPS Security
+SECURE_SSL_REDIRECT = not DEBUG
+SESSION_COOKIE_SECURE = False
+CSRF_COOKIE_SECURE = False
 
 # Application definition
 
@@ -42,11 +50,10 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    'pandas',
-    'openpyxl',
     'core',
     'sesion',
     'ws',
+    'validar',
 ]
 
 MIDDLEWARE = [
@@ -57,6 +64,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'utils.middleware.TrazabilidadAutenticacionMiddleware.TrazabilidadAutenticacionMiddleware',
 ]
 
 ROOT_URLCONF = 'ilook_v1.urls'
@@ -89,7 +97,8 @@ DATABASES = {
         'USER': env('DB_USER'),
         'PASSWORD': env('DB_PASSWORD'),
         'HOST': env('DB_HOST'),
-        'PORT': env('DB_PORT')
+        'PORT': env('DB_PORT'),
+        'CONN_MAX_AGE': 600,
     }
 }
 
@@ -127,14 +136,13 @@ USE_TZ = True
 
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/5.2/howto/static-files/
+
 STATIC_URL = 'static/'
-STATIC_ROOT = BASE_DIR / 'staticfiles'
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
-
 
 # Configuración de REST-Framework
 REST_FRAMEWORK = {
@@ -144,12 +152,18 @@ REST_FRAMEWORK = {
     'DEFAULT_PERMISSION_CLASSES': [
         'rest_framework.permissions.IsAuthenticated',
     ],
+    'DEFAULT_FILTER_BACKENDS': [
+      'django_filters.rest_framework.DjangoFilterBackend',
+    ],
     'DEFAULT_RENDERER_CLASSES': [
     'rest_framework.renderers.JSONRenderer',
+    ] if not DEBUG else [
+        'rest_framework.renderers.JSONRenderer',
+        'rest_framework.renderers.BrowsableAPIRenderer',
     ],
     'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
     'PAGE_SIZE': 10,
-    'EXCEPTION_HANDLER': 'sesion.utils.custom_exception_handler',
+    'EXCEPTION_HANDLER': 'utils.genericos.custom_exception_handler',
 }
 
 
@@ -157,30 +171,129 @@ REST_FRAMEWORK = {
 TOKEN_TIMEOUT_SECONDS = 3600
 
 
-# Log de la aplicación (solo produccion)
-# LOGGING = {
-#     'version': 1,
-#     'disable_existing_loggers': False,
-#     'handlers': {
-#         'file': {
-#             'level': 'DEBUG',
-#             'class': 'logging.FileHandler',
-#             'filename': BASE_DIR / 'debug.log',
-#         },
-#     },
-#     'loggers': {
-#         'django': {
-#             'handlers': ['file'],
-#             'level': 'DEBUG',
-#             'propagate': True,
-#         },
-#     },
-# }
+# Configuracion de CELERY
+CELERY_BROKER_URL = 'redis://localhost:6379/0'
+CELERY_ACCEPT_CONTENT = ['json']
+CELERY_TASK_SERIALIZER = 'json'
+CELERY_RESULT_BACKEND = 'redis://localhost:6379/0'
+CELERY_TASK_TRACK_STARTED = True
+CELERY_TASK_TIME_LIMIT = 300
 
 
-# Extra de seguridad (solo produccion)
-# SECURE_BROWSER_XSS_FILTER = True
-# SECURE_CONTENT_TYPE_NOSNIFF = True
-# SESSION_COOKIE_SECURE = True
-# CSRF_COOKIE_SECURE = True
-# X_FRAME_OPTIONS = 'DENY'
+# Logging setting
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+
+    'formatters': {
+        'verbose': {
+            'format': '{levelname} {asctime} {module} {message}',
+            'style': '{',
+        },
+    },
+
+    'handlers': {
+        'sesion_file': {
+            'level': 'INFO',
+            'class': 'logging.handlers.TimedRotatingFileHandler',
+            'filename': os.path.join(BASE_DIR, 'logs/sesion.log'),
+            'when': 'midnight',
+            'backupCount': 7,  # conserva 7 días
+            'formatter': 'verbose',
+            'delay': True,
+            'encoding': 'utf-8',
+        },
+        'validation_file': {
+            'level': 'INFO',
+            'class': 'logging.handlers.TimedRotatingFileHandler',
+            'filename': os.path.join(BASE_DIR, 'logs/validacion.log'),
+            'when': 'midnight',
+            'backupCount': 7,  # conserva 7 días
+            'formatter': 'verbose',
+            'delay': True,
+            'encoding': 'utf-8',
+        },
+        'data_file': {
+            'level': 'INFO',
+            'class': 'logging.handlers.TimedRotatingFileHandler',
+            'filename': os.path.join(BASE_DIR, 'logs/data.log'),
+            'when': 'midnight',
+            'backupCount': 7,  # conserva 7 días
+            'formatter': 'verbose',
+            'delay': True,
+            'encoding': 'utf-8',
+        },
+        'app_file': {
+            'level': 'INFO',
+            'class': 'logging.handlers.TimedRotatingFileHandler',
+            'filename': os.path.join(BASE_DIR, 'logs/app.log'),
+            'when': 'midnight',
+            'backupCount': 7,  # conserva 7 días
+            'formatter': 'verbose',
+            'delay': True,
+            'encoding': 'utf-8',
+        },
+    },
+    'loggers': {
+        'sesion': {
+            'handlers': ['sesion_file'],
+            'level': 'INFO',
+            'propagate': False,
+        },
+        'validacion': {
+            'handlers': ['validation_file'],
+            'level': 'INFO',
+            'propagate': False,
+        },
+        'data': {
+            'handlers': ['data_file'],
+            'level': 'INFO',
+            'propagate': False,
+        },
+        'app': {
+            'handlers': ['app_file'],
+            'level': 'INFO',
+            'propagate': True,
+        },
+    },
+}
+
+
+# Security for deployment
+SECURE_HSTS_SECONDS = 31536000
+SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+SECURE_HSTS_PRELOAD = True
+
+
+# protección contra clickjacking y sniffing.
+X_FRAME_OPTIONS = 'DENY'
+SECURE_BROWSER_XSS_FILTER = True
+SECURE_CONTENT_TYPE_NOSNIFF = True
+
+
+# CORS Setting
+#INSTALLED_APPS += ['corsheaders']
+#MIDDLEWARE.insert(1, 'corsheaders.middleware.CorsMiddleware')
+#CORS_ALLOWED_ORIGINS = env.list('CORS_ALLOWED_ORIGINS', default=[])
+#CORS_ALLOW_CREDENTIALS = True
+
+
+# Upload file settings
+# Maximo de datos cargados en memoria (Ej. JSON, formularios)
+# Maximo de tamaño de archivo para procesar (Ej. imagenes, CSV, Excel)
+GL_PROCESOS_VALIDACION = 10
+DATA_UPLOAD_MAX_MEMORY_SIZE = 2621460   #2.5MB
+FILE_UPLOAD_MAX_MEMORY_SIZE = 10485760  #10MB
+
+
+# Carga y validacion de archivos
+GL_CHUNK_SIZE = 50
+CAMPOS_CON_ZFIL = [
+  ('002', 19),
+  ('011', 6),
+  ('012', 6),
+  ('013', 4),
+  ('014', 4),
+  ('037', 12),
+  ('039', 2),
+]
